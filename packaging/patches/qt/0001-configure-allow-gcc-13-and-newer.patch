@@ -1,0 +1,22 @@
+Allow building WebKit with GCC 10 and newer (Debian 13 ships GCC 14).
+
+--- a/configure	2026-10-26 04:44:22.325064100 -0700
++++ b/configure	2026-10-26 04:44:22.332549404 -0700
+@@ -7754,7 +7754,7 @@
+     *-g++*)
+ 	# Check gcc's version
+ 	case "$(${QMAKE_CONF_COMPILER} -dumpversion)" in
+-	    12*|11*|10*|9*|8*|7*|6*|5*|4*|3.4*)
++	    [1-9][0-9]*|9*|8*|7*|6*|5*|4*|3.4*)
+ 		;;
+             3.3*)
+                 canBuildWebKit="no"
+@@ -8070,7 +8070,7 @@
+     3.*)
+         COMPILER_VERSION="3.*"
+         ;;
+-    12*|11*|10*|9*|8*|7*|6*|5*|4.*)
++    [1-9][0-9]*|9*|8*|7*|6*|5*|4.*)
+         COMPILER_VERSION="4"
+         ;;
+     *)

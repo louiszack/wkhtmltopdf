@@ -78,6 +78,14 @@ QT_CONFIG="
     -no-avx -no-neon
 "
 
+for p in "$SRC"/packaging/patches/qt/*.patch; do
+    if patch -d "$SRC/qt" -p1 -R -s -f --dry-run < "$p" > /dev/null 2>&1; then
+        echo "already applied: $p"
+    else
+        patch -d "$SRC/qt" -p1 -N < "$p"
+    fi
+done
+
 mkdir -p "$BUILD/qt" "$BUILD/app"
 
 cd "$BUILD/qt"
@@ -85,6 +93,10 @@ if [ ! -f .configured ]; then
     # shellcheck disable=SC2086
     "$SRC/qt/configure" $QT_CONFIG --prefix="$BUILD/qt"
     touch .configured
+fi
+if ! grep -q '^QT_CONFIG .*webkit' mkspecs/qconfig.pri; then
+    echo "Qt was configured without WebKit" >&2
+    exit 1
 fi
 make -j"$JOBS"
 
