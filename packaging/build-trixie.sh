@@ -94,7 +94,7 @@ if [ ! -f .configured ]; then
     "$SRC/qt/configure" $QT_CONFIG --prefix="$BUILD/qt"
     touch .configured
 fi
-if ! grep -q '^QT_CONFIG .*webkit' mkspecs/qconfig.pri; then
+if [ ! -f mkspecs/modules/qt_webkit_version.pri ]; then
     echo "Qt was configured without WebKit" >&2
     exit 1
 fi
