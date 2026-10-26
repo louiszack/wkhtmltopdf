@@ -17,11 +17,11 @@ jobs:
       - name: install git
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
       - name: checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: restore ccache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .ccache
           key: ccache-trixie-amd64-${{ github.run_id }}
@@ -33,11 +33,11 @@ jobs:
       # saved even when the build fails, so the next attempt resumes quickly
       - name: save ccache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .ccache
           key: ccache-trixie-amd64-${{ github.run_id }}-${{ github.run_attempt }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wkhtmltox-trixie-amd64
           path: dist/*.deb
@@ -50,14 +50,14 @@ jobs:
     container: debian:trixie
     steps:
       - name: checkout source
-        uses: actions/checkout@v5
-      - uses: actions/download-artifact@v4
+        uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: wkhtmltox-trixie-amd64
           path: dist
       - name: test
         run: packaging/test-trixie.sh dist/*.deb test-output
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-output
@@ -71,11 +71,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: wkhtmltox-trixie-amd64
           path: dist
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*.deb
           body: wkhtmltopdf with patched Qt for Debian 13 (trixie), built by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).

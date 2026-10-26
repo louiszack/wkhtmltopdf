@@ -1,0 +1,29 @@
+Map glyphs shared by CJK radicals and ideographs to the ideograph in
+the PDF ToUnicode table, so copying/searching Chinese text works.
+
+--- a/src/gui/text/qfontsubset.cpp	2026-10-26 05:15:12.082749992 -0700
++++ b/src/gui/text/qfontsubset.cpp	2026-10-26 05:15:12.129645102 -0700
+@@ -418,6 +418,14 @@
+     }
+ }
+ 
++// CJK fonts usually share one glyph between a unified ideograph and the
++// matching Kangxi / CJK supplement radical, which comes first in Unicode.
++// Prefer the ideograph so that text copied from the PDF is correct.
++static inline bool isCjkRadical(int uc)
++{
++    return uc >= 0x2e80 && uc <= 0x2fdf;
++}
++
+ QVector<int> QFontSubset::getReverseMap() const
+ {
+     QVector<int> reverseMap;
+@@ -430,7 +438,7 @@
+         int nglyphs = 10;
+         fontEngine->stringToCMap(&ch, 1, &glyphs, &nglyphs, QTextEngine::GlyphIndicesOnly);
+         int idx = glyph_indices.indexOf(glyphs.glyphs[0]);
+-        if (idx >= 0 && !reverseMap.at(idx))
++        if (idx >= 0 && (!reverseMap.at(idx) || isCjkRadical(reverseMap.at(idx))))
+             reverseMap[idx] = uc;
+     }
+     return reverseMap;

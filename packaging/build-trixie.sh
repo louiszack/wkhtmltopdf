@@ -129,6 +129,10 @@ make -j"$JOBS"
 # installed binaries and library are already stripped by qmake
 make install INSTALL_ROOT="$PKG/usr/local"
 
+FONTCONF=etc/fonts/conf.d/64-wkhtmltox-noto-cjk-sc.conf
+install -D -m 644 "$SRC/packaging/fontconfig/${FONTCONF##*/}" "$PKG/$FONTCONF"
+echo "/$FONTCONF" > "$PKG/DEBIAN/conffiles"
+
 # resolve shared library dependencies with the trixie package names
 # (libssl3t64, libpng16-16t64, ...) instead of hardcoding them
 mkdir -p "$BUILD/shlibs/debian"

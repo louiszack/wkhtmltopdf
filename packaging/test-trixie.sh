@@ -53,7 +53,14 @@ PAGES=$(pdfinfo "$OUT/report.pdf" | sed -n 's/^Pages: *//p')
 grep -q '销售订单' "$OUT/report.txt" || fail "Chinese body text missing"
 grep -q '样式表已加载' "$OUT/report.txt" || fail "stylesheet not loaded over HTTP"
 grep -q '测试公司页眉' "$OUT/report.txt" || fail "header missing"
-grep -q "第 2 页 / 共 $PAGES 页" "$OUT/report.txt" || fail "footer page numbers missing"
-pdffonts "$OUT/report.pdf" | grep -qi 'cjk' || fail "CJK font not embedded"
+grep -q "第 *2 *页 */ *共 *$PAGES *页" "$OUT/report.txt" || fail "footer page numbers missing"
+pdffonts "$OUT/report.pdf" | grep -q 'CJKsc' || fail "Simplified Chinese CJK font not embedded"
+# copied text must use ideographs (用, 页, ...) and not look-alike radicals (⽤, ⻚, ...)
+python3 -I -c '
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+radicals = sorted(set(re.findall("[⺀-⿟]", text)))
+sys.exit("radicals in PDF text: " + " ".join(radicals) if radicals else 0)
+' "$OUT/report.txt" || fail "PDF text contains CJK radicals"
 
 echo "OK: $PAGES pages"
