@@ -126,19 +126,23 @@ mkdir -p "$PKG/DEBIAN" "$PKG/usr/local"
 cd "$BUILD/app"
 "$BUILD/qt/bin/qmake" "$SRC/wkhtmltopdf.pro" CONFIG+=silent
 make -j"$JOBS"
+# installed binaries and library are already stripped by qmake
 make install INSTALL_ROOT="$PKG/usr/local"
-
-strip --strip-unneeded "$PKG"/usr/local/bin/* "$PKG"/usr/local/lib/libwkhtmltox.so.*.*.*
 
 # resolve shared library dependencies with the trixie package names
 # (libssl3t64, libpng16-16t64, ...) instead of hardcoding them
 mkdir -p "$BUILD/shlibs/debian"
 echo "Source: wkhtmltox" > "$BUILD/shlibs/debian/control"
-SHLIBS=$(cd "$BUILD/shlibs" && dpkg-shlibdeps -O --ignore-missing-info \
+(cd "$BUILD/shlibs" && dpkg-shlibdeps -O --ignore-missing-info \
     -l"$PKG/usr/local/lib" \
-    -e"$PKG"/usr/local/bin/wkhtmltopdf \
-    -e"$PKG"/usr/local/bin/wkhtmltoimage \
-    -e"$PKG"/usr/local/lib/libwkhtmltox.so.*.*.* | sed -n 's/^shlibs:Depends=//p')
+    "$PKG"/usr/local/bin/wkhtmltopdf \
+    "$PKG"/usr/local/bin/wkhtmltoimage \
+    "$PKG"/usr/local/lib/libwkhtmltox.so.*.*.*) > "$BUILD/shlibs/substvars"
+SHLIBS=$(sed -n 's/^shlibs:Depends=//p' "$BUILD/shlibs/substvars")
+if [ -z "$SHLIBS" ]; then
+    echo "dpkg-shlibdeps found no dependencies" >&2
+    exit 1
+fi
 
 cat > "$PKG/DEBIAN/control" <<EOF
 Package: wkhtmltox
