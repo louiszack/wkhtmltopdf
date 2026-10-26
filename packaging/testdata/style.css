@@ -1,0 +1,10 @@
+body { font-family: sans-serif; font-size: 14px; color: #222; }
+h1 { color: #714b67; border-bottom: 2px solid #714b67; }
+table { width: 100%; border-collapse: collapse; }
+thead { display: table-header-group; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #999; padding: 4px 6px; }
+th { background: #eee; }
+td.num { text-align: right; }
+/* rendered only when this stylesheet is fetched, checked by test-trixie.sh */
+.css-check::before { content: "样式表已加载"; color: #888; }

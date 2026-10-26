@@ -22,3 +22,9 @@ Makefile.*
 *.o
 moc_*.*
 .qmake*
+
+# Debian 13 packaging
+build-trixie/
+dist/
+test-output/
+.ccache/

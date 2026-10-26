@@ -1,0 +1,81 @@
+name: Debian 13 (trixie)
+on:
+  push:
+    branches: [ master, debian13-trixie ]
+    tags: [ '*' ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build amd64 package
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 300
+    steps:
+      - name: install git
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+      - name: checkout source
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+      - name: restore ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-trixie-amd64-${{ github.run_id }}
+          restore-keys: ccache-trixie-amd64-
+      - name: build
+        env:
+          CCACHE_MAXSIZE: 3G
+        run: packaging/build-trixie.sh dist
+      # saved even when the build fails, so the next attempt resumes quickly
+      - name: save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-trixie-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wkhtmltox-trixie-amd64
+          path: dist/*.deb
+          if-no-files-found: error
+
+  test:
+    name: Test on clean trixie
+    needs: build
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    steps:
+      - name: checkout source
+        uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: wkhtmltox-trixie-amd64
+          path: dist
+      - name: test
+        run: packaging/test-trixie.sh dist/*.deb test-output
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-output
+          path: test-output
+
+  release:
+    name: Publish release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wkhtmltox-trixie-amd64
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+          body: wkhtmltopdf with patched Qt for Debian 13 (trixie), built by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).

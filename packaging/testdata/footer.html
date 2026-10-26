@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css">
+<script>
+// same mechanism as Odoo's report layout: wkhtmltopdf passes page/topage in the query string
+function subst() {
+    var vars = {};
+    var pairs = document.location.search.substring(1).split('&');
+    for (var i = 0; i < pairs.length; i++) {
+        var kv = pairs[i].split('=', 2);
+        vars[kv[0]] = decodeURIComponent(kv[1]);
+    }
+    var names = ['page', 'topage'];
+    for (var j = 0; j < names.length; j++) {
+        var nodes = document.getElementsByClassName(names[j]);
+        for (var k = 0; k < nodes.length; k++) nodes[k].textContent = vars[names[j]];
+    }
+}
+</script></head>
+<body onload="subst()"><div style="text-align: center;">第 <span class="page"></span> 页 / 共 <span class="topage"></span> 页</div></body></html>
