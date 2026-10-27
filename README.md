@@ -11,3 +11,7 @@ See https://wkhtmltopdf.org for updated documentation.
 wkhtmltopdf has its own dedicated repository for building and packaging.
 
 See https://github.com/wkhtmltopdf/packaging
+
+## Debian 13 (trixie) / Odoo 19
+
+This fork builds a patched-Qt package for Debian 13, see [ODOO.md](ODOO.md).

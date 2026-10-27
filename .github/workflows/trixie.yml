@@ -78,4 +78,5 @@ jobs:
       - uses: softprops/action-gh-release@v3
         with:
           files: dist/*.deb
+          prerelease: ${{ contains(github.ref_name, 'dev') }}
           body: wkhtmltopdf with patched Qt for Debian 13 (trixie), built by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
