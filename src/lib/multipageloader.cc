@@ -52,7 +52,18 @@ LoaderObject::LoaderObject(QWebPage & p): page(p), skip(false) {};
 
 MyNetworkAccessManager::MyNetworkAccessManager(const settings::LoadPage & s):
 	disposed(false),
+	restrictHosts(false),
 	settings(s) {
+
+	// WKHTMLTOPDF_ALLOWED_HOSTS=host1,host2 restricts all network requests to
+	// these hosts (exact match, port ignored), e.g. to keep reports rendered by
+	// Odoo from reaching other servers. An empty value blocks all hosts.
+	QByteArray hosts = qgetenv("WKHTMLTOPDF_ALLOWED_HOSTS");
+	if (!hosts.isNull()) {
+		restrictHosts = true;
+		foreach (const QString & host, QString::fromLatin1(hosts).split(',', QString::SkipEmptyParts))
+			allowedHosts.insert(host.trimmed().toLower());
+	}
 
 	if ( !s.cacheDir.isEmpty() ){
 		QNetworkDiskCache *cache = new QNetworkDiskCache(this);
@@ -101,6 +112,16 @@ QNetworkReply * MyNetworkAccessManager::createRequest(Operation op, const QNetwo
 		if (!ok) {
 			QNetworkRequest r2 = req;
 			emit warning(QString("Blocked access to file %1").arg(QFileInfo(req.url().toLocalFile()).canonicalFilePath()));
+			r2.setUrl(QUrl("about:blank"));
+			return QNetworkAccessManager::createRequest(op, r2, outgoingData);
+		}
+	}
+	if (restrictHosts && !isLocalFileAccess) {
+		QString scheme = req.url().scheme().toLower();
+		bool isNetworkAccess = scheme != "data" && scheme != "qrc" && scheme != "about";
+		if (isNetworkAccess && !allowedHosts.contains(req.url().host().toLower())) {
+			QNetworkRequest r2 = req;
+			emit warning(QString("Blocked access to host %1").arg(req.url().host()));
 			r2.setUrl(QUrl("about:blank"));
 			return QNetworkAccessManager::createRequest(op, r2, outgoingData);
 		}

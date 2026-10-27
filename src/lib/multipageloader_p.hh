@@ -49,7 +49,9 @@ class DLL_LOCAL MyNetworkAccessManager: public QNetworkAccessManager {
 	Q_OBJECT
 private:
 	bool disposed;
+	bool restrictHosts;
 	QSet<QString> allowed;
+	QSet<QString> allowedHosts;
 	const settings::LoadPage & settings;
 public:
 	void dispose();
