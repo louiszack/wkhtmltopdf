@@ -306,6 +306,14 @@ def main(out):
     images = subprocess.run(['pdfimages', '-list', pdf], capture_output=True, text=True).stdout
     check(len(images.splitlines()) - 2 >= 30, 'large: product images embedded')
 
+    # --- stress: how far a limit goes, measured only (output not kept) ---
+    print('stress: 10000 rows, 200 images')
+    bodies = [layout(document(1, 10000, images=200), False)]
+    for name, limit in LIMITS:
+        pdf = os.path.join(out, 'stress.pdf')
+        record('stress', name, run_wkhtmltopdf(bodies, header, footer, pdf, limit), pdf_pages(pdf))
+        os.unlink(pdf)
+
     # --- SSRF: requests to other hosts, with and without the allowlist ---
     print(f'ssrf: report content pointing at {OTHER_HOST}')
     probes = f"""

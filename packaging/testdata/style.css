@@ -1,4 +1,12 @@
-body { font-family: sans-serif; font-size: 14px; color: #222; }
+/* layout rules copied from Odoo 19 web/static/src/webclient/actions/reports/report.scss:
+   with <html style="height: 0;"> the measured body height of the header is 0,
+   which is how Odoo's headers end up at the top of the page */
+html, body { height: 100%; direction: ltr; }
+.overflow-hidden { overflow: hidden !important; }
+.o_body_pdf.o_css_margins { padding: 0 11mm; }
+.o_body_pdf.o_css_margins .header { padding-top: 11mm; }
+
+body { font-family: sans-serif; font-size: 14px; color: #222; line-height: 1.5; }
 h1 { color: #714b67; border-bottom: 2px solid #714b67; }
 table { width: 100%; border-collapse: collapse; }
 thead { display: table-header-group; }
@@ -6,5 +14,5 @@ tr { page-break-inside: avoid; }
 th, td { border: 1px solid #999; padding: 4px 6px; }
 th { background: #eee; }
 td.num { text-align: right; }
-/* rendered only when this stylesheet is fetched, checked by test-trixie.sh */
+/* rendered only when this stylesheet is fetched, checked by odoo_sim.py */
 .css-check::before { content: "样式表已加载"; color: #888; }
