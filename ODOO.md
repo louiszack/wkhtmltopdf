@@ -28,6 +28,9 @@ docker exec <odoo 容器> wkhtmltopdf --version    # 必须包含 (with patched 
 docker restart <odoo 容器>
 ```
 
+`apt-get install` 的 deb 参数必须带路径（`/tmp/...` 或 `./...`）。只写文件名时 apt 会把它当成软件源里的包名，
+报 `Unable to locate package`。
+
 ### 方式 B：写进 Dockerfile（长期使用）
 
 两行 `ARG` 的值在 Releases 页面每个版本的说明里，已经填好地址和 sha256，复制替换即可。
@@ -61,6 +64,7 @@ USER odoo
 - 镜像中如已装有 Debian 自带的（未打补丁的）`wkhtmltopdf`，apt 会自动替换。
 - 第二段只清理本来没有的编译工具，基础镜像里原有的不会被删；最后生成一个条码自检，失败则镜像构建失败。
 - 构建时需要能访问 GitHub 和 PyPI。
+- 升级到新版本：换成新版本说明里的两行 `ARG`，重新构建镜像并部署。
 
 ### 带条码的报表报错（RenderPMError）
 
@@ -80,6 +84,24 @@ docker exec -u root <odoo 容器> sh -c 'apt-get update && apt-get install -y --
 docker exec <odoo 容器> /usr/local/bin/python3 -c "from reportlab.graphics.barcode import createBarcodeDrawing as c; print(len(c('Code128', value='WH/IN/00001', format='png').asString('png')))"
 docker restart <odoo 容器>
 ```
+
+### 安装后检查
+
+| 检查 | 通过标准 |
+|---|---|
+| `docker exec <odoo 容器> wkhtmltopdf --version` | 包含 `(with patched qt)` |
+| 打印报价单或发票 | 有页眉、页脚、logo，页码正确 |
+| 在列表中勾选几张一起打印 | 每份都有自己的页眉页脚，页码各自从 1 开始 |
+| 打印入库单 | 条码正常显示 |
+| 从 PDF 复制中文，粘贴到记事本 | 是正常汉字，不是「⽤」「⼤」这类部首字符 |
+| 用外网地址登录门户，下载 PDF | 样式正常 |
+| 允许列表（第 3 节），运行下面的命令 | 输出 `Blocked access to host 192.168.1.1` |
+
+```sh
+docker exec <odoo 容器> sh -c 'echo "<img src=\"http://192.168.1.1/x.png\">" > /tmp/t.html && wkhtmltopdf /tmp/t.html /tmp/t.pdf'
+```
+
+PDF 没有样式、没有页眉页脚时，先检查第 2 节的 `report.url`。
 
 ## 2. Odoo 设置
 
