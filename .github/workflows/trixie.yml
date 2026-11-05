@@ -17,11 +17,11 @@ jobs:
       - name: install git
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
       - name: checkout source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
       - name: restore ccache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ccache-trixie-amd64-${{ github.run_id }}
@@ -33,11 +33,11 @@ jobs:
       # saved even when the build fails, so the next attempt resumes quickly
       - name: save ccache
         if: always()
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .ccache
           key: ccache-trixie-amd64-${{ github.run_id }}-${{ github.run_attempt }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wkhtmltox-trixie-amd64
           path: dist/*.deb
@@ -50,14 +50,14 @@ jobs:
     container: debian:trixie
     steps:
       - name: checkout source
-        uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: wkhtmltox-trixie-amd64
           path: dist
       - name: test
         run: packaging/test-trixie.sh dist/*.deb test-output
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: test-output
@@ -71,12 +71,33 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - name: checkout release notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: packaging
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: wkhtmltox-trixie-amd64
           path: dist
-      - uses: softprops/action-gh-release@v3
+      # GitHub rewrites "~" in asset names; rename first so the notes link the real file
+      - name: write release notes
+        env:
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          src=$(ls dist/*.deb)
+          deb=$(basename "$src" | tr '~' '.')
+          [ "$src" = "dist/$deb" ] || mv "$src" "dist/$deb"
+          sha=$(sha256sum "dist/$deb" | cut -d' ' -f1)
+          sed -e "s|@REPO_URL@|$REPO_URL|g" -e "s|@RUN_URL@|$RUN_URL|g" -e "s|@TAG@|$TAG|g" \
+              -e "s|@DEB@|$deb|g" -e "s|@SHA256@|$sha|g" \
+              packaging/release-notes.md > release-notes.md
+          if grep -n '@[A-Z0-9_]*@' release-notes.md; then exit 1; fi
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: dist/*.deb
+          fail_on_unmatched_files: true
           prerelease: ${{ contains(github.ref_name, 'dev') }}
-          body: wkhtmltopdf with patched Qt for Debian 13 (trixie), built by [this run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          body_path: release-notes.md
