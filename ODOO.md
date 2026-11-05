@@ -30,9 +30,13 @@ docker restart <odoo 容器>
 
 ### 方式 B：写进 Dockerfile（长期使用）
 
+两行 `ARG` 的值在 Releases 页面每个版本的说明里，已经填好地址和 sha256，复制替换即可。
+第二段只在 Odoo 的 Python 依赖是 pip 安装时需要，见下文“带条码的报表报错”。
+
 ```dockerfile
 USER root
 
+# wkhtmltopdf (patched Qt, Debian 13) + Chinese fonts
 ARG WKHTMLTOX_URL=https://github.com/louiszack/wkhtmltopdf/releases/download/<tag>/<deb 文件名>
 ARG WKHTMLTOX_SHA256=<sha256>
 ADD ${WKHTMLTOX_URL} /tmp/wkhtmltox.deb
@@ -41,10 +45,41 @@ RUN echo "${WKHTMLTOX_SHA256}  /tmp/wkhtmltox.deb" | sha256sum -c - \
     && apt-get install -y --no-install-recommends /tmp/wkhtmltox.deb fonts-noto-cjk \
     && rm -rf /tmp/wkhtmltox.deb /var/lib/apt/lists/*
 
+# Barcodes in reports (receipts, labels): reportlab PNG backend for pip-installed Odoo
+RUN BUILD_DEPS="gcc libc6-dev pkg-config libcairo2-dev" \
+    && NEW_DEPS=$(for p in $BUILD_DEPS; do dpkg -s "$p" >/dev/null 2>&1 || echo "$p"; done) \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends libcairo2 $BUILD_DEPS \
+    && /usr/local/bin/python3 -m pip install --no-cache-dir rlPyCairo==0.4.0 pycairo==1.29.2 freetype-py==2.3.0 \
+    && { [ -z "$NEW_DEPS" ] || apt-get purge -y --auto-remove $NEW_DEPS; } \
+    && rm -rf /var/lib/apt/lists/* \
+    && /usr/local/bin/python3 -c "from reportlab.graphics.barcode import createBarcodeDrawing as c; c('Code128', value='WH/IN/00001', format='png').asString('png')"
+
 USER odoo
 ```
 
-镜像中如已装有 Debian 自带的（未打补丁的）`wkhtmltopdf`，apt 会自动替换。
+- 镜像中如已装有 Debian 自带的（未打补丁的）`wkhtmltopdf`，apt 会自动替换。
+- 第二段只清理本来没有的编译工具，基础镜像里原有的不会被删；最后生成一个条码自检，失败则镜像构建失败。
+- 构建时需要能访问 GitHub 和 PyPI。
+
+### 带条码的报表报错（RenderPMError）
+
+**现象**：打印入库单、出库单、产品标签等带条码的报表时报错
+`RenderPMError: cannot import desired renderPM backend rlPyCairo`。
+
+**原因**：与 wkhtmltopdf 无关。条码图片由 Python 的 reportlab 生成，reportlab 4.x 需要额外的组件才能输出 PNG。
+Odoo 的 `requirements.txt` 只在 Windows 上安装这个组件，在 Debian/Ubuntu 上默认由系统的 `python3-reportlab` 包提供。
+所以 Odoo 的 Python 依赖用 pip 安装时（报错路径是 `/usr/local/lib/python3.x/site-packages`）就会缺失。
+原来的组件 rl-renderPM 没有 Python 3.13 的安装包，源码也无法构建，因此改用 reportlab 支持的另一个组件 rlPyCairo。
+
+**修复**：方式 B 的 Dockerfile 已包含。在运行中的容器里测试：
+
+```sh
+docker exec -u root <odoo 容器> sh -c 'apt-get update && apt-get install -y --no-install-recommends libcairo2 libcairo2-dev pkg-config gcc libc6-dev && /usr/local/bin/python3 -m pip install --no-cache-dir rlPyCairo==0.4.0 pycairo==1.29.2 freetype-py==2.3.0'
+# 输出一个数字即成功
+docker exec <odoo 容器> /usr/local/bin/python3 -c "from reportlab.graphics.barcode import createBarcodeDrawing as c; print(len(c('Code128', value='WH/IN/00001', format='png').asString('png')))"
+docker restart <odoo 容器>
+```
 
 ## 2. Odoo 设置
 
@@ -136,4 +171,6 @@ docker run --rm -v "$PWD":/src -w /src debian:trixie packaging/test-trixie.sh di
 ```
 
 构建脚本会先应用 `packaging/patches/qt/` 下的 Qt 补丁。
-推送 tag 时 GitHub Actions 会自动构建、测试并发布到 Releases。
+推送 tag 时 GitHub Actions 会自动构建、测试并发布到 Releases，
+发布说明由 [packaging/release-notes.md](packaging/release-notes.md) 生成（填入下载地址和 sha256）。
+tag 名含 `dev` 的标为预发布，例如 `0.12.7-dev-trixie.2`；正式版如 `0.12.7-trixie.1`。
